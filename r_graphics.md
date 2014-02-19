@@ -1,12 +1,15 @@
-% Graphics in R
-% [Chris Krogslund](http://ckro.gs); [Political Science](http://polisci.berkeley.edu) // [D-Lab](http://dlab.berkeley.edu) // [UC Berkeley](http://www.berkeley.edu/)
-% [ckrogslund@berkeley.edu](mailto:ckrogslund@berkeley.edu)
+# Graphics in R
+**[Chris Krogslund](http://ckro.gs)**
+
+[Political Science](http://polisci.berkeley.edu) // [D-Lab](http://dlab.berkeley.edu) // [UC Berkeley](http://www.berkeley.edu/)
+
+**[ckrogslund@berkeley.edu](mailto:ckrogslund@berkeley.edu)**
 
 
 
 
 
-# By way of introduction...
+## By way of introduction...
 
 * 3 main facilities for producing graphics in R: **base**, **lattice**, and **ggplot2**
   * In practice, these facilities are grouped into two camps: "basic" and "advanced"
