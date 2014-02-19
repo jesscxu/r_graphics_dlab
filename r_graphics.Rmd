@@ -1,0 +1,730 @@
+% Graphics in R
+% [Chris Krogslund](http://ckro.gs); [Political Science](http://polisci.berkeley.edu) // [D-Lab](http://dlab.berkeley.edu) // [UC Berkeley](http://www.berkeley.edu/)
+% [ckrogslund@berkeley.edu](mailto:ckrogslund@berkeley.edu)
+
+
+```{r chunksetup, include=FALSE} 
+# include any code here you don't want to show up in the document,
+# e.g. package and dataset loading
+rm(list=ls())
+library(plyr)
+library(reshape2)
+library(ggplot2)
+library(lattice)
+library(gridExtra)
+setwd(dir="/Users/ChristopherKrogslund/Documents/D-Lab/Teaching/Graphics in R 2014-02")
+data<-read.csv(file="cpds.csv")
+```
+
+# By way of introduction...
+
+* 3 main facilities for producing graphics in R: **base**, **lattice**, and **ggplot2**
+  * In practice, these facilities are grouped into two camps: "basic" and "advanced"
+* A better formulation: quick/dirty v. involved/fancy
+
+# quick/dirty v. involved/fancy
+
+* Recall that R is an object-oriented programming language
+
+```{r}
+tips<-reshape2::tips # Load dataset on tipping behavior included with reshape2 package
+attributes(tips) # Check attributes of the tips dataset (names, row.names, class)
+# Create an object of class "lm" (linear model), regressing tip on some covariates
+tips.reg<-lm(formula=tip~total_bill+sex+smoker+day+time+size, data=tips)
+attributes(tips.reg) # Check attributes of the tips.reg object (names, class)
+```
+
+* Base graphics often recognizes the object type and will implement specific plot methods
+
+```{r, fig.cap=" "}
+plot(tips) # Calls plotting method for class of tips dataset ("data.frame")
+plot(tips.reg, which=1:2) # Calls plotting method for class of tips.reg objects ("lm"), print first two plots only
+```
+
+* lattice and ggplot2 generally **don't** exhibit this sort of behavior
+```{r, fig.cap=" "}
+xyplot(tips) # Attempt in lattice to automatically plot objects of class "data.frame"
+ggplot(data=tips)+geom_point() # Attempt in ggplot to automatically plot objects of class "data.frame"
+xyplot(tips.reg) # Attempt in lattice to automatically plot objects of class "lm"
+ggplot(data=tips.reg)+geom_point() # Attempt in ggplot to automatically plot objects of class "lm"
+```
+
+* Easiest to cover **base** graphics on its own, but **lattice** and **ggplot2** in tandem 
+
+# The Dataset
+
+* **Comparative Political Data Set I** (Armingeon et al. 2012)
+* Cases: 23 industrialized democracies, 1960-2012
+* Variables: *Government composition* (L-R); *state structure* (federalism, presidentialism, bicameralism, etc.); *macroeconomic indicators* (output, inflation, unemployment, deficit/debt, etc.); *demographics* (population, elderly)
+
+For more info: [http://www.ipw.unibe.ch/content/team/klaus_armingeon/comparative_political_data_sets/index_eng.html](http://www.ipw.unibe.ch/content/team/klaus_armingeon/comparative_political_data_sets/index_eng.html)
+
+A copy of the dataset is available in the file "cpds.csv", which can be read in as:
+
+```{r}
+data<-read.csv(file="cpds.csv")
+```
+
+# The Dataset, more specifically
+
+```{r}
+attributes(data)[1:2] # Only show the first two attributes of the dataset (column names and object class)
+# There are many variables, so it can be helpful to extract their classes (mostly to check for factors) via a quick for-loop 
+
+classes<-NULL # Create a placeholder for the class output
+
+# for-loop
+for(i in 1:ncol(data)){
+classes<-c(classes, class(data[,i]))
+}
+sort(classes) # Sort the results alphabetically (appears to be some factors, a few integers, and many numerics)
+```
+
+# base
+
+* *Minimal* call takes the following form
+
+```{r, eval=F}
+plot(x=)
+```
+
+* Note that data-bearing arguments of length creater than 1 ("x" in this case) must be *vectorized* in some manner (usually using the '$' column vector method)
+
+```{r, fig.cap=" "}
+plot(x=vturn) # Attempt to plot variable "vturn" without vectorization
+plot(x=data$vturn) # Attempt to plot variable "vturn" with '$' vectorization
+```
+
+* *Basic* call takes the following form
+
+```{r, eval=F}
+plot(x=, y=, type="")
+```
+
+
+# base/type (scatter, line, both)
+
+* The "type" argument accepts the following character indicators
+* "p" -- point/scatter plots (default plotting behavior)
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="p") # Plot Year on x-axis and Real GDP Growth on y-axis
+```
+* "l" -- line graphs
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="l") # Plot Year on x-axis and Real GDP Growth on y-axis
+```
+* "b" -- both line and point plots
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="b") # Plot Year on x-axis and Real GDP Growth on y-axis
+```
+
+# base/type (histograms, density plots)
+
+* Certain plot types require different calls outside of the "type" argument
+* Ex) Histograms
+```{r, fig.cap=" "}
+hist(x=data$vturn) # Plot histogram of voter turnout 
+hist(x=data$vturn, breaks=2) # Plot histogram of voter turnout, with 2 breaks
+hist(x=data$vturn, breaks=50) # Plot histogram of voter turnout, with 50 breaks
+```
+* Ex) Density plots
+```{r, fig.cap=" "}
+vturn.density<-density(x=data$vturn, na.rm=T) # Create a density object (NOTE: be sure to remove missing values)
+class(vturn.density) # Check the class of the object
+vturn.density # View the contents of the object
+plot(x=vturn.density) # Plot the density object
+plot(x=density(x=data$vturn, bw=2, na.rm=T)) # Plot the density object, bandwidth of 2
+plot(x=density(x=data$vturn, bw=.5, na.rm=T)) # Plot the density object, bandwidth of 0.5
+plot(x=density(x=data$vturn, bw=6, na.rm=T)) # Plot the density object, bandwidth of 6
+```
+
+# base/options [labeling]
+
+* Basic call with popular labeling arguments
+```{r, eval=F}
+plot(x=, y=, type="", xlab="", ylab="", main="") 
+```
+* From the previous example
+
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="p", xlab="Year", ylab="Real GDP Growth", main="This Graph is Great") # Add labels for axes and overall plot
+```
+
+# base/options [axis + size scaling]
+
+* Basic call with popular scaling arguments
+```{r, eval=F}
+plot(x=, y=, type="", xlim=, ylim=, cex=)
+```
+* From the previous example
+
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="p") # Create a basic plot
+# Limit the years (x-axis) to between 1976 and 1991
+plot(x=data$year, y=data$realgdpgr, type="p", xlim=c(1976,1991))
+# Limit the years (x-axis) to between 1976 and 1991, increase point size to 2
+plot(x=data$year, y=data$realgdpgr, type="p", xlim=c(1976,1991), cex=2) 
+# Limit the years (x-axis) to between 1976 and 1991, decrease point size to 0.5
+plot(x=data$year, y=data$realgdpgr, type="p", xlim=c(1976,1991), cex=0.5) 
+```
+
+# base/options [graphical parameters]
+
+* Basic call with popular scaling arguments
+```{r, eval=F}
+plot(x=, y=, type="", col="", pch=, lty=, lwd=)
+```
+* Colors
+```{r}
+colors() # View all elements of the color vector
+colors()[179] # View specific element of the color vector
+colors()[179:190] # View a selection of elements from the color vector
+```
+Another option: [R Color Infographic](http://research.stowers-institute.org/efg/R/Color/Chart/ColorsChart1.jpg)
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="p", col=colors()[145]) # or col="gold3"
+plot(x=data$year, y=data$realgdpgr, type="p", col=colors()[624]) # or col="tan4"
+```
+
+* Point Styles and Widths
+
+[A Good Reference](http://www.endmemo.com/program/R/pic/pchsymbols.png)
+
+```{r, fig.cap=" "}
+plot(x=data$year, y=data$realgdpgr, type="p", pch=3) # Change point style to crosses
+plot(x=data$year, y=data$realgdpgr, type="p", pch=15) # Change point style to filled squares
+# Change point style to filled squares and increase point size to 3
+plot(x=data$year, y=data$realgdpgr, type="p", pch=15, cex=3) 
+plot(x=data$year, y=data$realgdpgr, type="p", pch="w") # Change point style to "w"
+# Change point style to "$" and increase point size to 2
+plot(x=data$year, y=data$realgdpgr, type="p", pch="$", cex=2) 
+```
+
+* Line Styles and Widths
+```{r}
+# Create a data.frame containing yearly average Real GDP Growth over all countries
+library(plyr)
+#Split-apply-combine via plyr
+mean.growth<-ddply(.data=data, .variables=.(year), summarize, mean=mean(realgdpgr)) 
+head(mean.growth)
+```
+
+```{r, fig.cap=" "}
+# Line plot with solid line
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=1)
+# Line plot with medium dashed line
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=2)
+# Line plot with short dashed line
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=3)
+# Change line width to 2
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=3, lwd=2)
+# Change line width to 3
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=3, lwd=3)
+# Change line width to 4
+plot(x=mean.growth$year, y=mean.growth$mean, type="l", lty=3, lwd=4)
+```
+
+# base/layering
+
+* Layering is accomplished by plotting succesive commands of "lines()", "points()", etc. after "plot()"
+```{r,}
+# Subset data to create a few data.frames containing data for a single country 
+france.growth<-data[data$country=="France",]
+italy.growth<-data[data$country=="Italy",]
+spain.growth<-data[data$country=="Spain",]
+```
+
+* Successive calls to "plot()" returns two different plots
+```{r, fig.cap=" "}
+# First call to plot
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+# Second call to plot
+plot(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+```
+
+* But using "lines()" for the second and subsequent calls layers the plots
+```{r, fig.cap=" "}
+# First call to plot
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+# First call to lines
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+# Second call to lines
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+```
+
+* The same is true for "points()"
+```{r, fig.cap=" "}
+# First call to plot
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+# First call to lines
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+# Second call to lines
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+# First call to points
+points(x=1986, y=6, pch=13, col=colors()[116])
+# Second call to points
+points(x=1986, y=-1, pch=13, col=colors()[24])
+# Third call to points
+points(x=1966, y=2, pch=13, col=colors()[391])
+# Fourth call to points
+points(x=2008, y=4, pch=13, col=colors()[8])
+```
+
+# base/options [annotations/reference lines/legends]
+
+* Text 
+```{r, fig.cap=" "}
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+# First call to text
+text(x=1967, y=-1, labels="No dot here")
+```
+
+* Reference Lines
+```{r, fig.cap=" "}
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+text(x=1967, y=-1, labels="No dot here")
+# First call to abline
+abline(v=1980, h=0)
+```
+
+* Legends
+```{r, fig.cap=" "}
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+text(x=1967, y=-1, labels="No dot here")
+abline(v=1980, h=0)
+# First call to legend (note the vector position correspondence between each of the argument values)
+legend("topright", legend=c("France", "Italy", "Spain"), col=c("red", "blue", "darkgreen"), lty=c(1,1,1), lwd=c(2,2,2), cex=.8)
+```
+
+# base/tables
+
+* Can form tables of graphs using the "par()" call like so:
+```{r, eval=FALSE}
+par(mrow=c(ncols,nrows))
+```
+
+
+```{r, fig.cap=" "}
+# STEP 1: Call "par() for a 2x2 table"
+par(mfrow=c(2,2))
+
+# STEP 2: Plot #1
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+
+# STEP 3: Plot #2
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+text(x=1967, y=-1, labels="No dot here")
+
+# STEP 4: Plot #3
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+text(x=1967, y=-1, labels="No dot here")
+abline(v=1980, h=0)
+
+# STEP 5: Plot #4
+plot(x=france.growth$year, y=france.growth$realgdpgr, type="l", col="red", lwd=2)
+lines(x=italy.growth$year, y=italy.growth$realgdpgr, type="l", col="blue", lwd=2)
+lines(x=spain.growth$year, y=spain.growth$realgdpgr, type="l", col="darkgreen", lwd=2)
+points(x=1986, y=6, pch=13, col=colors()[116])
+points(x=1986, y=-1, pch=13, col=colors()[24])
+points(x=1966, y=2, pch=13, col=colors()[391])
+points(x=2008, y=4, pch=13, col=colors()[8])
+text(x=1967, y=-1, labels="No dot here")
+abline(v=1980, h=0)
+legend("topright", legend=c("France", "Italy", "Spain"), col=c("red", "blue", "darkgreen"), lty=c(1,1,1), lwd=c(2,2,2), cex=.8)
+```
+
+# Out with the old...
+
+* Base graphics are really great, but they're not like this (created with a single line of code)
+
+<img src="figure/ka_2.jpg" height="800px" width="1000px" />
+  
+  * **lattice** (Deepayan Sarkar, ISI, Delhi)
+
+* **ggplot2** (Hadley Wickham, again)
+
+* Both are built on "grid", both are really huge improvements over base R graphics
+
+* Both also have entire ***books*** written about them (~200-300 pp. each)
+
+# lattice v. ggplot2
+
+* lattice is 
+
+a) faster (though only noticeable over many and large plots) 
+
+b) simpler (at first)
+
+c) better at trellis graphs
+
+d) able to do 3d graphs
+
+* ggplot2 is 
+
+a) generally more elegant
+
+b) more syntactically logical (and therefore simpler, once you learn it)
+
+c) better at grouping
+
+d) able to interface with maps
+
+# Basic usage: lattice
+
+The general call for lattice graphics looks something like this:
+  
+```{r, eval=FALSE}
+graph_type(formula, data=, [options])
+```
+
+The specifics of the **formula** differ for each graph type, but the general format is straightforward
+
+```{r, eval=FALSE}
+y             # Show the distribution of y
+
+y~x           # Show the relationship between x and y 
+
+y~x|A         # Show the relationship between x and y conditional on the values of A
+
+y~x|A*B       # Show the relationship between x and y conditional on the combinations of A and B
+
+z~y*x         # Show the 3D relationship between x, y, and z
+```
+
+# Basic usage: ggplot2
+
+The general call for ggplot2 graphics looks something like this:
+  
+```{r, eval=FALSE}
+ggplot(data=, aes(x=,y=, [options]))+geom_xxxx()+...+...+...
+```
+
+Note that ggplot2 graphs in layers in a *continuing call* (hence the endless +...+...+...), which really makes the extra layer part of the call
+
+```{r, eval=FALSE}
+...+geom_xxxx(data=, aes(x=,y=,[options]),[options])+...+...+...
+```
+You can see the layering effect by comparing the same graph with different colors for each layer
+
+```{r, fig.cap=" ", warning=FALSE}
+ggplot(data=data, aes(x=vturn, y=realgdpgr))+geom_point(color="black")+geom_point(aes(x=vturn, y=unemp), color="red")
+ggplot(data=data, aes(x=vturn, y=realgdpgr))+geom_point(color="red")+geom_point(aes(x=vturn, y=unemp), color="black")
+```
+
+# Comparing lattice and ggplot
+
+* Density Plots
+* Scatter Plots
+* Line Plots
+* Bar plots
+* Box plots
+* Trellis Plots
+* Contour Plots
+* Tile/Image Plots
+* 3D Plots (lattice)
+* Panel Plots (ggplot2)
+
+# lattice v. ggplot2: Densities
+
+```{r, fig.cap=" ", warning=FALSE}
+densityplot(~vturn, data=data) # lattice
+ggplot(data=data, aes(x=vturn))+geom_density() # ggplot2
+```
+
+# lattice v. ggplot2: X-Y scatter plots
+
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data) # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point() # ggplot2
+```
+
+# lattice v. ggplot2: X-Y line plots
+
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(mean~year, data=mean.growth, type="l") # lattice
+ggplot(data=mean.growth, aes(x=year, y=mean))+geom_line() # ggplot2 
+```
+
+# lattice v. ggplot2: bar plots 
+```{r, fig.cap=" ", warning=FALSE, message=FALSE}
+# Create data.frame of average growth rates by country over time
+growth<-ddply(.data=data, .variables=.(country), summarize, mean=mean(realgdpgr, na.rm=T))
+
+barchart(mean~country, data=growth) # lattice
+ggplot(data=growth, aes(x=country, y=mean))+geom_bar() # ggplot2
+```
+
+# lattice v. ggplot2: box plots 
+```{r, fig.cap=" ", warning=FALSE}
+bwplot(vturn~country, data=data) # lattice
+ggplot(data=data, aes(x=country, y=vturn))+geom_boxplot() # ggplot2
+```
+
+# lattice v. ggplot2: "trellis" plots 
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(vturn~year|country, data=data) # lattice
+ggplot(data=data, aes(x=year, y=vturn))+geom_point()+facet_wrap(~country) # ggplot2
+```
+
+# lattice v. ggplot2: countour plots
+```{r, fig.cap=" ", warning=FALSE}
+data(volcano) # Load volcano contour data
+volcano[1:10, 1:10] # Examine volcano dataset (first 10 rows and columns)
+volcano3d <- melt(volcano) # Use reshape2 package to melt the data
+head(volcano3d) # Examine volcano3d dataset (head)
+names(volcano3d) <- c("xvar", "yvar", "zvar") # Rename volcano3d columns
+contourplot(zvar~xvar+yvar, data=volcano3d) # lattice
+ggplot(data=volcano3d, aes(x=xvar, y=yvar, z = zvar))+geom_contour() # ggplot2
+```
+
+# lattice v. ggplot2: tile/image/level plots
+```{r, fig.cap=" ", warning=FALSE}
+levelplot(zvar~xvar+yvar, data=volcano3d) # lattice
+ggplot(data=volcano3d, aes(x=xvar, y=yvar, z = zvar))+geom_tile(aes(fill=zvar)) # ggplot2
+```
+
+# lattice: 3D plots
+```{r, fig.cap=" ", warning=FALSE}
+# Create a subset of the dataset containing only data for France
+france.data<-data[data$country=="France",]
+cloud(outlays~year*vturn, data=france.data)
+# Create a subset of the dataset containing only data for Greece, Portugal, Ireland, and Spain
+pigs.data<-data[data$country %in% c("Greece", "Portugal", "Ireland", "Spain"),]
+cloud(outlays~year*vturn|country, data=pigs.data)
+```
+
+# ggplot2: Panel plots
+```{r, fig.cap=" ", warning=FALSE}
+ggplot(data=pigs.data, aes(x=year, y=vturn, color=country))+geom_line()
+```
+
+# lattice v. ggplot2: options [labeling]
+
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, xlab="Voter Turnout (%)", ylab="Government Outlays", main="This Graph is Also Great") # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point()+xlab(label="Voter Turnout (%)")+ylab(label="Government Outlays")+ggtitle(label="This Graph is Also Also Great") # ggplot2
+```
+
+# lattice v. ggplot2: options [axis + size scaling]
+
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, xlim=c(80,100)) # lattice
+xyplot(outlays~vturn, data=data, xlim=c(80,100), cex=2) # lattice
+xyplot(outlays~vturn, data=data, xlim=c(80,100), cex=.5) # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point()+xlim(80,100) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(size=3)+xlim(80,100) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(size=1)+xlim(80,100) # ggplot2
+```
+
+# lattice v. ggplot2: options [graphical parameters]
+
+* Colors
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, col=colors()[145]) #lattice
+xyplot(outlays~vturn, data=data, col="red") #lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(color=colors()[145]) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(color="red") # ggplot2
+```
+
+* Point Styles and Widths
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, pch=3) # lattice
+xyplot(outlays~vturn, data=data, pch=15) # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape=3) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape=15) # ggplot2
+```
+
+* Point Styles and Widths
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, pch=3) # lattice
+xyplot(outlays~vturn, data=data, pch=15) # lattice
+xyplot(outlays~vturn, data=data, pch="w") # lattice
+xyplot(outlays~vturn, data=data, pch="$", cex=2) # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape=3) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape=15) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape="w") # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_point(shape="$", size=5) # ggplot2
+```
+
+* Line Styles and Widths
+```{r, fig.cap=" ", warning=FALSE}
+xyplot(outlays~vturn, data=data, type="l", lty=1) # lattice
+xyplot(outlays~vturn, data=data, type="l", lty=2) # lattice
+xyplot(outlays~vturn, data=data, type="l", lty=3) # lattice
+xyplot(outlays~vturn, data=data, type="l", lty=3, lwd=2) # lattice
+xyplot(outlays~vturn, data=data, type="l", lty=3, lwd=3) # lattice
+xyplot(outlays~vturn, data=data, type="l", lty=3, lwd=4) # lattice
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=1) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=2) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=3) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=3, size=1) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=3, size=1.5) # ggplot2
+ggplot(data=data, aes(x=vturn, y=outlays))+geom_line(linetype=3, size=2) # ggplot2
+```
+
+# ggplot2 and the Grammar of Graphics
+
+- By now, you might be noticing some trends in how these two packages approach graphics
+
+- lattice tends to focus on a particular type of graph and how to represent cross-sectional variation by splitting it up into smaller chunks
+
+- Becoming a proficient user of lattice requires learning a huge array of graph-specific formulas and options
+
+- ggplot2 tries to represent much more of the cross-sectional variation by making use of various "aesthetics"; general approach is based on *The Grammar of Graphics*
+  
+# ggplot2 and the Grammar of Graphics
+  
+  - Basic idea is that the visualization of all data requires four items
+
+1) One or more **statistics** conveying information about the data (identities, means, medians, etc.)
+
+2) A **coordinate system** that differentiates between the intersections of statistics (at most two for ggplot, three for lattice)
+
+3) **Geometries** that differentiate between off-coordinate variation in *kind*
+  
+  4) **Scales** that differentiate between off-coordinate variation in *degree*
+  
+  - ggplot2 allows the user to manipulate all four of these items
+
+# Anatomy of aes()
+
+```{r, eval=FALSE}
+ggplot(data=, aes(x=, y=, color=, linetype=, shape=, size=))
+```
+
+ggplot2 is optimized for showing variation on all four aesthetic types
+
+```{r, fig.cap=" ", warning=FALSE}
+# Differences in kind using color
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_line(aes(color=country))
+```
+
+Note what happens when we specify the color parameter outside of the aesthetic operator. ggplot2 views these specifications as invalid graphical parameters. 
+
+```{r, fig.cap=" ", warning=FALSE}
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_line(color=country)
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_line(color="country")
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_line(color="red")
+```
+
+```{r, fig.cap=" ", warning=FALSE}
+# Differences in kind using line types
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_line(aes(linetype=country))
+# Differences in kind using point shapes
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point(aes(shape=country))
+# Differences in degree using color
+ggplot(data=pigs.data, aes(x=year, y=realgdpgr))+geom_point(aes(color=vturn))
+# Differences in degree using point size
+ggplot(data=pigs.data, aes(x=year, y=realgdpgr))+geom_point(aes(size=vturn))
+# Multiple non-cartesian aesthetics (differences in kind using color, degree using point size)
+ggplot(data=pigs.data, aes(x=year, y=realgdpgr))+geom_point(aes(color=country,size=vturn))
+```
+
+# Fitted lines and curves with ggplot2
+```{r, fig.cap=" ", warning=FALSE, message=FALSE}
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()
+# Add linear model (lm) smoother
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()+geom_smooth(method="lm")
+# Add local linear model (loess) smoother, span of 0.75 
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()+geom_smooth(method="loess", span=.75)
+# Add local linear model (loess) smoother, span of 0.25 
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()+geom_smooth(method="loess", span=.25)
+# Add linear model (lm) smoother, no standard error shading 
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()+geom_smooth(method="lm", se=F)
+# Add local linear model (loess) smoother, no standard error shading 
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point()+geom_smooth(method="loess", se=F)
+# Add a local linear (loess) smoother for each country
+ggplot(data=pigs.data, aes(x=year, y=vturn))+geom_point(aes(color=country))+geom_smooth(aes(color=country))
+# Add a local linear (loess) smoother for each country, no standard error shading
+ggplot(data=pigs.data, aes(x=year, y=realgdpgr))+geom_point(aes(color=country, size=vturn))+geom_smooth(aes(color=country), se=F)
+```
+
+# lattice v. ggplot2: tables
+
+* Both lattice and ggplot2 graphs can be combined using the *grid.arrange()* function in the **gridExtra** package 
+```{r, warning=FALSE, fig.cap=" "}
+# Initialize gridExtra library
+library(gridExtra)
+# Create 3 plots to combine in a table
+plot1<-ggplot(data=pigs.data, aes(x=year, y=vturn, color=))+geom_line(aes(color=country))
+plot2<-ggplot(data=pigs.data, aes(x=year, y=vturn, linetype=))+geom_line(aes(linetype=country))
+plot3<-ggplot(data=pigs.data, aes(x=year, y=vturn, shape=))+geom_point(aes(shape=country))
+# Call grid.arrange
+grid.arrange(plot1, plot2, plot3, nrow=3, ncol=1)
+```
+
+# Exporting
+
+Two basic image types
+
+1) **Raster/Bitmap** (.png, .jpeg)
+
+Every pixel of a plot contains its own separate coding; not so great if you want to resize the image
+
+```{r, eval=FALSE}
+jpeg(filename="example.png", width=, height=)
+plot(x,y)
+dev.off()
+```
+
+2) **Vector** (.pdf, .ps)
+
+Every element of a plot is encoded with a function that gives its coding conditional on several factors; great for resizing
+
+```{r, eval=FALSE}
+pdf(filename="example.pdf", width=, height=)
+plot(x,y)
+dev.off()
+```
+
+# Exporting with lattice v. ggplot
+
+```{r, eval=FALSE}
+# Assume we saved our plot is an object called example.plot
+
+# lattice
+trellis.device(device="pdf", filename="example.pdf")
+print(example.plot)
+dev.off()
+
+# ggplot2
+ggsave(filename="example.pdf", plot=example.plot, scale=, width=, height=) # ggplot2
+```
+
+# stop()
